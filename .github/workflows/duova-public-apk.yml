@@ -1,7 +1,7 @@
 name: Duova virtual APK
 on:
   push:
-    branches: [duova-v3-picker]
+    branches: [duova-direct-apk-v1]
   workflow_dispatch:
 permissions:
   contents: write
