@@ -1,0 +1,85 @@
+name: Duova virtual APK
+on:
+  push:
+    branches: [duova-direct-apk-v1]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout customizations
+        uses: actions/checkout@v4
+      - name: Checkout virtualization engine
+        uses: actions/checkout@v4
+        with:
+          repository: fdavids77/BlackBoxReborn
+          ref: 7b86a9d62a974650e0659825758931cd91140827
+          path: virtualizer
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install patch dependency
+        run: python -m pip install Pillow
+      - name: Apply Duova visual design
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import zlib,base64
+          encoded=Path('duova/duova_brand_patch.zlib.b64').read_text().strip()
+          try:
+              patch=zlib.decompress(base64.b64decode(encoded))
+          except Exception:
+              # Repair a one-character copy loss in the encoded patch.
+              alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+              patch=None
+              for i in range(len(encoded)+1):
+                  for char in alphabet:
+                      try:
+                          candidate=encoded[:i]+char+encoded[i:]
+                          patch=zlib.decompress(base64.b64decode(candidate))
+                          print('Recovered transfer at',i)
+                          break
+                      except Exception:
+                          pass
+                  if patch is not None: break
+              if patch is None: raise RuntimeError('Encoded patch was not recoverable')
+          Path('virtualizer/duova_patch.py').write_bytes(patch)
+          PY
+          cd virtualizer
+          python duova_patch.py
+          sed -i 's/android:allowBackup="false"/android:allowBackup="false" tools:replace="android:allowBackup"/' app/src/main/AndroidManifest.xml
+          sed -i 's/name="colorBackground"/name="android:colorBackground"/' app/src/main/res/values/themes.xml
+          sed -i 's#</menu>#<item android:id="@+id/main_tg" android:title="Communauté" android:visible="false" />\n</menu>#' app/src/main/res/menu/menu_main.xml
+      - name: Minimize sensitive permissions
+        run: |
+          cd virtualizer
+          python ../duova/secure_manifest.py
+      - name: Update Android target SDK for installation compatibility
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('virtualizer/build.gradle')
+          t=p.read_text()
+          import re
+          t,n=re.subn(r'targetSdkVersion\s*=\s*28', 'targetSdkVersion = 35',t)
+          assert n==1, 'Unexpected target SDK configuration'
+          p.write_text(t)
+          print('Target SDK updated to 35; functional runtime compatibility is unverified.')
+          PY
+      - name: Build Android APK
+        working-directory: virtualizer
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug --no-daemon --stacktrace
+      - name: Publish test APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          FILE="$(find virtualizer/app/build/outputs/apk/debug -name '*arm64-v8a*.apk' | head -1)"
+          test -n "$FILE"
+          gh release delete duova-direct-apk-v1 -y || true
+          gh release create duova-direct-apk-v1 "$FILE#Duova-Android16-direct.apk" --title "Duova V2 - Android virtualizer" --notes "Experimental Android virtual app container. No ads added, reduced sensitive permissions; not security audited; functions may not work on Android 16. Apps and Android 16 compatibility unverified. Based on BlackBoxReborn (Apache-2.0)." --target duova-direct-apk-v1 --prerelease
