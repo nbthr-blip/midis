@@ -1,7 +1,7 @@
 name: Duova virtual APK
 on:
   push:
-    branches: [duova-direct-apk-v1]
+    branches: [duova-v3-picker]
   workflow_dispatch:
 permissions:
   contents: write
@@ -70,6 +70,16 @@ jobs:
           p.write_text(t)
           print('Target SDK updated to 35; functional runtime compatibility is unverified.')
           PY
+      - name: Apply Duova V3 picker and UI fix
+        run: |
+          python - <<'PY'
+          import base64,zlib
+          from pathlib import Path
+          s=Path('duova/duova_v3_fix.zlib.b64').read_text().strip()
+          Path('virtualizer/duova_v3_fix.py').write_bytes(zlib.decompress(base64.b64decode(s)))
+          PY
+          cd virtualizer
+          python duova_v3_fix.py
       - name: Build Android APK
         working-directory: virtualizer
         run: |
@@ -81,5 +91,5 @@ jobs:
         run: |
           FILE="$(find virtualizer/app/build/outputs/apk/debug -name '*arm64-v8a*.apk' | head -1)"
           test -n "$FILE"
-          gh release delete duova-direct-apk-v1 -y || true
-          gh release create duova-direct-apk-v1 "$FILE#Duova-Android16-direct.apk" --title "Duova V2 - Android virtualizer" --notes "Experimental Android virtual app container. No ads added, reduced sensitive permissions; not security audited; functions may not work on Android 16. Apps and Android 16 compatibility unverified. Based on BlackBoxReborn (Apache-2.0)." --target duova-direct-apk-v1 --prerelease
+          gh release delete duova-v3-picker -y || true
+          gh release create duova-v3-picker "$FILE#Duova-V3.apk" --title "Duova V2 - Android virtualizer" --notes "Experimental Android virtual app container. No ads added, reduced sensitive permissions; not security audited; functions may not work on Android 16. Apps and Android 16 compatibility unverified. Based on BlackBoxReborn (Apache-2.0)." --target duova-v3-picker --prerelease
