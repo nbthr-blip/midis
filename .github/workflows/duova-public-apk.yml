@@ -80,6 +80,18 @@ jobs:
           PY
           cd virtualizer
           python duova_v3_fix.py
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app/src/main/res/layout/activity_list.xml')
+          s=p.read_text()
+          extra=('    <com.ferfalk.simplesearchview.SimpleSearchView xmlns:app="http://schemas.android.com/apk/res-auto" '
+                 'android:id="@+id/searchView" android:layout_width="1dp" android:layout_height="1dp" '
+                 'android:visibility="gone" app:type="card"/>'
+                 '<FrameLayout android:id="@+id/stateView" android:layout_width="1dp" '
+                 'android:layout_height="1dp" android:visibility="gone"/>')
+          s=s.replace('</LinearLayout>',extra+'</LinearLayout>',1)
+          p.write_text(s)
+          PY
       - name: Build Android APK
         working-directory: virtualizer
         run: |
