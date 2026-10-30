@@ -104,4 +104,4 @@ jobs:
           FILE="$(find virtualizer/app/build/outputs/apk/debug -name '*arm64-v8a*.apk' | head -1)"
           test -n "$FILE"
           gh release delete duova-v3-picker -y || true
-          gh release create duova-v3-picker "$FILE#Duova-V3.apk" --title "Duova V2 - Android virtualizer" --notes "Experimental Android virtual app container. No ads added, reduced sensitive permissions; not security audited; functions may not work on Android 16. Apps and Android 16 compatibility unverified. Based on BlackBoxReborn (Apache-2.0)." --target duova-v3-picker --prerelease
+          gh release create duova-v3-picker "$FILE#Duova-V3.apk" --title "Duova V2 - Android virtualizer" --notes "Experimental Android virtual app container. No ads added, reduced sensitive permissions; not security audited; functions may not work on Android 16. Apps and Android 16 compatibility unverified. Based on BlackBoxReborn (Apache-2.0)." --target duova-direct-apk-v1 --prerelease
