@@ -91,27 +91,6 @@ jobs:
           x=x[:i]+extra+x[i:]
           p.write_text(x)
           PY
-      - name: Install Duova V4 clone management
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          import shutil
-          root=Path('virtualizer')
-          dst=root/'app/src/main/java/top/niunaijun/blackboxa/view/main/ManageAppsActivity.kt'
-          shutil.copyfile('duova/v4/ManageAppsActivity.kt', dst)
-          manifest=root/'app/src/main/AndroidManifest.xml'
-          t=manifest.read_text()
-          t=t.replace('</application>','<activity android:name=".view.main.ManageAppsActivity" android:exported="false"/></application>')
-          manifest.write_text(t)
-          menu=root/'app/src/main/res/menu/menu_main.xml'
-          t=menu.read_text()
-          t=t.replace('</menu>','<item android:id="@+id/manage_clones" android:title="Mes clones" app:showAsAction="never"/></menu>')
-          menu.write_text(t)
-          activity=root/'app/src/main/java/top/niunaijun/blackboxa/view/main/MainActivity.kt'
-          t=activity.read_text()
-          t=t.replace('when (item.itemId) {','when (item.itemId) {\n                R.id.manage_clones -> {\n                    val intent = Intent(this, ManageAppsActivity::class.java)\n                    intent.putExtra("userID", currentUser)\n                    startActivity(intent)\n                }')
-          activity.write_text(t)
-          PY
       - name: Install clone manager and virtual launch diagnostics
         run: |
           python - <<'PY'
