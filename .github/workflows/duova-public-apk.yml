@@ -1,7 +1,7 @@
 name: Duova virtual APK
 on:
   push:
-    branches: [duova-v3-ux-fix]
+    branches: [duova-v4-manager-launch]
   workflow_dispatch:
 permissions:
   contents: write
@@ -91,6 +91,27 @@ jobs:
           x=x[:i]+extra+x[i:]
           p.write_text(x)
           PY
+      - name: Install Duova V4 clone management
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import shutil
+          root=Path('virtualizer')
+          dst=root/'app/src/main/java/top/niunaijun/blackboxa/view/main/ManageAppsActivity.kt'
+          shutil.copyfile('duova/v4/ManageAppsActivity.kt', dst)
+          manifest=root/'app/src/main/AndroidManifest.xml'
+          t=manifest.read_text()
+          t=t.replace('</application>','<activity android:name=".view.main.ManageAppsActivity" android:exported="false"/></application>')
+          manifest.write_text(t)
+          menu=root/'app/src/main/res/menu/menu_main.xml'
+          t=menu.read_text()
+          t=t.replace('</menu>','<item android:id="@+id/manage_clones" android:title="Mes clones" app:showAsAction="never"/></menu>')
+          menu.write_text(t)
+          activity=root/'app/src/main/java/top/niunaijun/blackboxa/view/main/MainActivity.kt'
+          t=activity.read_text()
+          t=t.replace('when (item.itemId) {','when (item.itemId) {\n                R.id.manage_clones -> {\n                    val intent = Intent(this, ManageAppsActivity::class.java)\n                    intent.putExtra("userID", currentUser)\n                    startActivity(intent)\n                }')
+          activity.write_text(t)
+          PY
       - name: Build Android APK
         working-directory: virtualizer
         run: |
@@ -102,5 +123,5 @@ jobs:
         run: |
           FILE="$(find virtualizer/app/build/outputs/apk/debug -name '*arm64-v8a*.apk' | head -1)"
           test -n "$FILE"
-          gh release delete duova-v3-ux-fix -y || true
-          gh release create duova-v3-ux-fix "$FILE#Duova-v3-ARM64.apk" --title "Duova V2 - Android virtualizer" --notes "Experimental Android virtual app container. No ads added, reduced sensitive permissions; not security audited; functions may not work on Android 16. Apps and Android 16 compatibility unverified. Based on BlackBoxReborn (Apache-2.0)." --target duova-v3-ux-fix --prerelease
+          gh release delete duova-v4-manager-launch -y || true
+          gh release create duova-v4-manager-launch "$FILE#Duova-v4-manager-ARM64.apk" --title "Duova V4 beta - Clone manager and launch diagnostics" --notes "Experimental Android virtual app container. No ads added, reduced sensitive permissions; not security audited; functions may not work on Android 16. Apps and Android 16 compatibility unverified. Based on BlackBoxReborn (Apache-2.0)." --target duova-v4-manager-launch --prerelease
