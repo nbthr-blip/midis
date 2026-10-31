@@ -112,6 +112,30 @@ jobs:
           t=t.replace('when (item.itemId) {','when (item.itemId) {\n                R.id.manage_clones -> {\n                    val intent = Intent(this, ManageAppsActivity::class.java)\n                    intent.putExtra("userID", currentUser)\n                    startActivity(intent)\n                }')
           activity.write_text(t)
           PY
+      - name: Install clone manager and virtual launch diagnostics
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          root=Path('virtualizer')
+          source=Path('duova/v4/ManageAppsActivity.kt').read_text()
+          source=source.replace('"${apps.size} application(s) dans cet espace"', 'apps.size.toString() + " application(s) dans cet espace"')
+          dest=root/'app/src/main/java/top/niunaijun/blackboxa/view/main/ManageAppsActivity.kt'
+          dest.write_text(source)
+          manifest=root/'app/src/main/AndroidManifest.xml'
+          m=manifest.read_text().replace('</application>', '<activity android:name=".view.main.ManageAppsActivity" android:exported="false" /></application>')
+          manifest.write_text(m)
+          menu=root/'app/src/main/res/menu/menu_main.xml'
+          x=menu.read_text().replace('</menu>', '<item android:id="@+id/manage_clones" android:title="Gérer mes clones" app:showAsAction="never" /></menu>')
+          menu.write_text(x)
+          main=root/'app/src/main/java/top/niunaijun/blackboxa/view/main/MainActivity.kt'
+          x=main.read_text().replace('R.id.main_setting -> {', '''R.id.manage_clones -> {
+                    val i = Intent(this, ManageAppsActivity::class.java)
+                    i.putExtra("userID", currentUser)
+                    startActivity(i)
+                }
+                R.id.main_setting -> {''')
+          main.write_text(x)
+          PY
       - name: Build Android APK
         working-directory: virtualizer
         run: |
