@@ -1,0 +1,39 @@
+name: Desktop Screens — Fabric 1.21.11 experimental build
+
+on:
+  push:
+    branches: ["experiments/desktop-screens-1.21.11"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout port bootstrap
+        uses: actions/checkout@v4
+      - name: Install Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Clone original MIT-licensed source
+        run: git clone --depth 1 https://github.com/MagiMigi/desktop-screens.git upstream
+      - name: Apply Minecraft 1.21.11 + StreamCraft hotkey patch
+        run: python3 scripts/desktop_screens_patch.py upstream
+      - name: Compile Fabric mod
+        working-directory: upstream
+        run: |
+          chmod +x gradlew
+          ./gradlew :1.21.11-fabric:build --no-daemon --stacktrace --console=plain
+      - name: Upload compiled mod
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-screens-fabric-1.21.11-experimental
+          path: upstream/versions/1.21.11-fabric/build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 14
