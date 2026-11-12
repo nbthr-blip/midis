@@ -38,6 +38,30 @@ public final class HostBroadcast {
 
     private HostBroadcast() {}
 
+    private static MinecraftServer activeServer;
+    private static boolean enabled;
+
+    public static boolean isEnabled(MinecraftServer server) {
+        return server != null && server == activeServer && enabled;
+    }
+
+    public static void toggle(net.minecraft.server.level.ServerPlayer player, Toggle packet) {
+        MinecraftServer server = player.getServer();
+        if (server == null || !player.getUUID().equals(owner(server))) return;
+        activeServer = server;
+        enabled = packet.enabled();
+        for (net.minecraft.server.level.ServerPlayer p : server.getPlayerList().getPlayers())
+            ScreenSharing.sendLists(p);
+    }
+
+    public record Toggle(boolean enabled) implements net.minecraft.network.protocol.common.custom.CustomPacketPayload {
+        public static final Type<Toggle> TYPE = new Type<>(DesktopScreens.id("broadcast_toggle"));
+        public static final net.minecraft.network.codec.StreamCodec<io.netty.buffer.ByteBuf, Toggle> STREAM_CODEC =
+                net.minecraft.network.codec.StreamCodec.composite(
+                        net.minecraft.network.codec.ByteBufCodecs.BOOL, Toggle::enabled, Toggle::new);
+        @Override public Type<Toggle> type() { return TYPE; }
+    }
+
     public static UUID owner(MinecraftServer server) {
         if (server == null || server.isDedicatedServer() || server.getSingleplayerProfile() == null) return null;
         return server.getSingleplayerProfile().getId();
@@ -52,13 +76,13 @@ patch(sharing, "ByteBufCodecs.stringUtf8(ShareScreen.MAX_NAME).apply(ByteBufCode
       "ByteBufCodecs.stringUtf8(ShareScreen.MAX_NAME).apply(ByteBufCodecs.list(MAX_WATCHERS)), Lists::yourAllScreens,\n                Codecs.UUID, Lists::host, Lists::new);")
 patch(sharing,
       "return owner != null && (screen.sharedWith(watcher) || SharingData.of(server).sharesAll(owner, watcher));",
-      "return owner != null && (owner.equals(HostBroadcast.owner(server)) || screen.sharedWith(watcher) || SharingData.of(server).sharesAll(owner, watcher));")
+      "return owner != null && (owner.equals(HostBroadcast.owner(server)) && HostBroadcast.isEnabled(server) || screen.sharedWith(watcher) || SharingData.of(server).sharesAll(owner, watcher));")
 patch(sharing,
       "Net.toPlayer(player, new Lists(data.ownersSharingAllWith(player.getUUID()), names));",
       """UUID host = HostBroadcast.owner(Players.server(player));
         List<UUID> owners = new ArrayList<>(data.ownersSharingAllWith(player.getUUID()));
-        if (host != null && !host.equals(player.getUUID()) && !owners.contains(host)) owners.add(host);
-        Net.toPlayer(player, new Lists(owners, names, host == null ? HostBroadcast.NO_HOST : host));""")
+        if (host != null && HostBroadcast.isEnabled(Players.server(player)) && !host.equals(player.getUUID()) && !owners.contains(host)) owners.add(host);
+        Net.toPlayer(player, new Lists(owners, names, host == null || !HostBroadcast.isEnabled(Players.server(player)) ? HostBroadcast.NO_HOST : host));""")
 
 sharing_info = "src/main/java/com/desktopscreens/client/SharingInfo.java"
 patch(sharing_info, "import com.desktopscreens.ScreenSharing;", "import com.desktopscreens.ScreenSharing;\nimport com.desktopscreens.HostBroadcast;")
@@ -81,7 +105,7 @@ patch(relay, """        ServerConfig config = ServerConfig.of(Players.server(wat
         // A screen-independent broadcast from the Essential/LAN host: subscribe from ANY distance.
         if (pos.equals(HostBroadcast.WATCH_POS)) {
             UUID host = HostBroadcast.owner(Players.server(watcher));
-            if (host == null || host.equals(me)) return;
+            if (host == null || host.equals(me) || !HostBroadcast.isEnabled(Players.server(watcher))) return;
             ServerPlayer sender = Players.server(watcher).getPlayerList().getPlayer(host);
             if (sender == null || !ScreenSharing.canReceive.test(sender, ShareStream.Status.TYPE)) return;
             Owner o = OWNERS.computeIfAbsent(host, k -> new Owner());
@@ -102,7 +126,7 @@ patch(relay, """        ServerConfig config = ServerConfig.of(Players.server(wat
 patch(relay,
       "if (player.level().dimension() != i.dimension || player.distanceToSqr(Vec3.atCenterOf(i.pos)) > RANGE * RANGE) return false;",
       """if (i.pos.equals(HostBroadcast.WATCH_POS))
-            return owner.equals(HostBroadcast.owner(Players.server(player)));
+            return owner.equals(HostBroadcast.owner(Players.server(player))) && HostBroadcast.isEnabled(Players.server(player));
         if (player.level().dimension() != i.dimension || player.distanceToSqr(Vec3.atCenterOf(i.pos)) > RANGE * RANGE) return false;""")
 
 # If the host turns on a screen, every player can see it, even without manually adding names.
