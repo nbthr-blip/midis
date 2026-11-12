@@ -80,5 +80,90 @@ for source in (ROOT / "src/main/java").rglob("*.java"):
     if migrated != body:
         source.write_text(migrated, encoding="utf-8")
 
-print("Bootstrap patch applied: 1.21.11 Fabric target, modern rendering API, apostrophe settings key.")
+
+# 1.21.11 has the GUI draw-state model, but NOT the 26.1 names or some 26.1-only APIs.
+def edit_java(name, substitutions):
+    matches = list((ROOT / "src/main/java").rglob(name))
+    if len(matches) != 1:
+        raise SystemExit(f"Expected exactly one {name}, found {len(matches)}")
+    file = matches[0]
+    src = file.read_text(encoding="utf-8")
+    for old, new in substitutions:
+        if old not in src:
+            raise SystemExit(f"Missing {name} anchor: {old[:90]}")
+        src = src.replace(old, new)
+    file.write_text(src, encoding="utf-8")
+
+# 1.21.11 GUI state types are in client.gui.render.state, not renderer.state.gui.
+for file in (ROOT / "src/main/java").rglob("*.java"):
+    src = file.read_text(encoding="utf-8")
+    out = src.replace("net.minecraft.client.renderer.state.gui.", "net.minecraft.client.gui.render.state.")
+    out = out.replace("net.minecraft.client.renderer.state.level.CameraRenderState",
+                      "net.minecraft.client.renderer.state.CameraRenderState")
+    if out != src:
+        file.write_text(out, encoding="utf-8")
+
+# Fabric has still the old block-color event and a renamed world render event in 1.21.11.
+edit_java("DesktopScreensFabricClient.java", [
+    ("import net.fabricmc.fabric.api.client.rendering.v1.BlockColorRegistry;",
+     "import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;"),
+    ("import net.minecraft.client.color.block.BlockTintSource;", ""),
+    ("import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;",
+     "import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;"),
+    ("BlockColorRegistry.register(List.<BlockTintSource>of(state -> ScreenFrames.tint(0), state -> ScreenFrames.tint(1),\n                state -> ScreenFrames.tint(2), state -> ScreenFrames.tint(3)), DesktopScreensFabric.screen);",
+     "ColorProviderRegistry.BLOCK.register((state, level, pos, tintIndex) -> ScreenFrames.tint(tintIndex), DesktopScreensFabric.screen);"),
+    ("LevelRenderEvents.END_MAIN.register(context -> DesktopClient.renderWorld(context.levelState().cameraRenderState.pos));",
+     "WorldRenderEvents.END_MAIN.register(context -> DesktopClient.renderWorld(context.worldState().cameraRenderState.pos));")
+])
+
+# FTB's 26.1 new claims API does not exist in 1.21.11: leave legacy Architectury integration.
+for name in ("ClaimMods.java", "LandClaimsFabric.java"):
+    file = ROOT / "src/main/java/com/desktopscreens/fabric" / name
+    src = file.read_text(encoding="utf-8")
+    src = src.replace(">=1.21.11", ">=26.1")
+    if name == "ClaimMods.java":
+        # bundled Common Protection API 1.0 expects GameProfile here
+        src = src.replace("player.nameAndId(), player", "player.getGameProfile(), player")
+    file.write_text(src, encoding="utf-8")
+
+# Mojang mappings changes between 1.21.1 -> 1.21.11.
+edit_java("Players.java", [("player.sendOverlayMessage(message)", "player.displayClientMessage(message, true)")])
+edit_java("LiveCapture.java", [("mc.getToasts()", "mc.getToastManager()")])
+edit_java("SharingData.java", [
+    ('new SavedDataType<>(DesktopScreens.id("sharing"), SharingData::new, CODEC, null)',
+     'new SavedDataType<>(NAME, SharingData::new, CODEC, null)')
+])
+edit_java("SharedSounds.java", [("mc.gameRenderer.getMainCamera().getPosition()", "mc.gameRenderer.getMainCamera().position()")])
+edit_java("ScreenBuilderClient.java", [("mc.getTimer().getGameTimeDeltaPartialTick(true)",
+                                      "mc.getDeltaTracker().getGameTimeDeltaPartialTick(true)")])
+edit_java("CameraGlide.java", [("return camera.getFov();", "return mc.options.fov().get();")])
+for name in ("WorldBar.java", "GameCover.java"):
+    edit_java(name, [("import net.minecraft.util.LightCoordsUtil;",
+                      "import net.minecraft.client.renderer.LightTexture;"),
+                     ("LightCoordsUtil.FULL_BRIGHT", "LightTexture.FULL_BRIGHT")])
+edit_java("GuiDraw.java", [("g.text(font, text, x, y, opaque(color), shadow);",
+                           "g.drawString(font, text, x, y, opaque(color), shadow);")])
+edit_java("ColorSwatch.java", [("protected void extractContents(GuiGraphics g, int mouseX, int mouseY, float partialTick)",
+                              "protected void renderContents(GuiGraphics g, int mouseX, int mouseY, float partialTick)")])
+edit_java("DesktopScreen.java", [
+    ("public void extractBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick)",
+     "public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick)"),
+    ("public void extractRenderState(GuiGraphics g, int mouseX, int mouseY, float partialTick)",
+     "public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick)"),
+    ("super.extractRenderState(g, mouseX, mouseY, partialTick);",
+     "super.render(g, mouseX, mouseY, partialTick);")
+])
+# Picture render pipeline 26.1 used newer depth APIs unavailable in 1.21.11.
+edit_java("PictureRenderType.java", [
+    ("import com.mojang.blaze3d.pipeline.DepthStencilState;",
+     "import com.mojang.blaze3d.platform.DepthTestFunction;"),
+    ("import com.mojang.blaze3d.platform.CompareOp;", ""),
+    ("new DepthStencilState(CompareOp.LESS_THAN_OR_EQUAL, true, -1.0F, -10.0F)",
+     "DepthTestFunction.LEQUAL_DEPTH_TEST"),
+    (".withDepthStencilState(DepthTestFunction.LEQUAL_DEPTH_TEST)",
+     ".withDepthTestFunction(DepthTestFunction.LEQUAL_DEPTH_TEST).withDepthBias(-1.0F, -10.0F)")
+])
+
+print("Compatibility patch applied for the Fabric 1.21.11 GUI, renderer, and Mojang API migrations.")
+
 
