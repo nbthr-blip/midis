@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""BOTHIER experimental Essential-host broadcast, global audio and 3D handheld tablet.
+"""Experimental Essential-host broadcast, global audio and 3D handheld tablet.
 Apply to upstream Desktop Screens AFTER desktop_screens_patch.py.
 """
 from pathlib import Path
