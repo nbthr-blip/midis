@@ -238,7 +238,7 @@ replace(slider, """    private int intValue() {""",
 # A virtual host desktop stream would bypass per-screen window selection: remove that menu choice.
 channels = "src/main/java/com/desktopscreens/client/TabletChannels.java"
 replace(channels,
-        '        choices.add(new Channel(host,HostBroadcast.STREAM_ID,HostBroadcast.WATCH_POS,"Bureau de l\\'hote"));\n',
+        "        choices.add(new Channel(host,HostBroadcast.STREAM_ID,HostBroadcast.WATCH_POS,\"Bureau de l'hote\"));\n",
         '        // Tablets list ONLY explicitly built screens, not an undisclosed whole-desktop feed.\n')
 
 print("V5 patches applied: 180-degree UV correction, enumerate exact Win32 windows, per-screen GUI selector, beige/plum advanced settings.")
