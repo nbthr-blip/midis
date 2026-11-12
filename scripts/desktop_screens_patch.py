@@ -197,6 +197,28 @@ tasks.named<JavaCompile>("compileJava") {
 }
 """)
 
+# Runtime crash fix, user log 2026-11-12: ScreenMixin referenced 26.1-only
+# extractTransparentBackground, which does not exist in Minecraft 1.21.11.
+# For 1.21.11 use the old renderTransparentBackground / renderMenuBackground hooks.
+for name in ("ScreenMixin.java", "ChatComponentMixin.java"):
+    f = ROOT / "src/main/java/com/desktopscreens/mixin" / name
+    data = f.read_text(encoding="utf-8")
+    data = data.replace("//? if >=1.21.11 {", "//? if >=26.1 {")
+    f.write_text(data, encoding="utf-8")
+
+# Camera 1.21.11 has position(), yRot(), xRot() but it still calls setup(),
+# not alignWithEntity() (the 26.1 camera hook).
+cam = ROOT / "src/main/java/com/desktopscreens/mixin/CameraMixin.java"
+body = cam.read_text(encoding="utf-8")
+body = body.replace("import net.minecraft.client.Camera;", "import net.minecraft.client.Camera;\nimport net.minecraft.world.entity.Entity;\nimport net.minecraft.world.level.BlockGetter;")
+body = body.replace('@Inject(method = "alignWithEntity", at = @At("TAIL"))',
+                    '@Inject(method = "setup", at = @At("TAIL"))')
+body = body.replace('private void desktopscreens$glide(float partialTicks, CallbackInfo ci) {',
+                    'private void desktopscreens$glide(BlockGetter level, Entity entity, boolean detached, boolean thirdPersonReverse, float partialTicks, CallbackInfo ci) {')
+cam.write_text(body, encoding="utf-8")
+
+print("Applied runtime mixin target corrections: ScreenMixin, ChatComponentMixin, CameraMixin.")
+
 print("Compatibility patch applied for the Fabric 1.21.11 GUI, renderer, and Mojang API migrations.")
 
 
