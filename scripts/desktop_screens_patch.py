@@ -166,18 +166,7 @@ edit_java("PictureRenderType.java", [
 
 
 # 1.21.11 GUI model accepts SimpleGuiElementRenderState via addSimpleElement.
-edit_java("GuiDraw.java", [
-    ("import net.minecraft.client.gui.render.state.GuiElementRenderState;",
-     "import net.minecraft.client.gui.render.state.SimpleGuiElementRenderState;"),
-    ("GuiElementRenderState element", "SimpleGuiElementRenderState element"),
-    (".addGuiElement(element)", ".addSimpleElement(element)")
-])
-edit_java("BorderRenderer.java", [
-    ("import net.minecraft.client.gui.render.state.GuiElementRenderState;",
-     "import net.minecraft.client.gui.render.state.SimpleGuiElementRenderState;"),
-    ("implements GuiElementRenderState", "implements SimpleGuiElementRenderState"),
-    ("public void buildVertices(VertexConsumer out)", "public void setupVertices(VertexConsumer out)")
-])
+edit_java("GuiDraw.java", [(".addGuiElement(element)", ".addSimpleElement(element)")])
 
 print("Compatibility patch applied for the Fabric 1.21.11 GUI, renderer, and Mojang API migrations.")
 
