@@ -21,7 +21,9 @@ jobs:
           distribution: temurin
           java-version: "21"
       - name: Clone original MIT-licensed source
-        run: git clone --depth 1 https://github.com/MagiMigi/desktop-screens.git upstream
+        run: |
+          git clone https://github.com/MagiMigi/desktop-screens.git upstream
+          git -C upstream checkout 31e64620c60db522a9032c3b2ebc5baf43f71247
       - name: Apply Minecraft 1.21.11 + StreamCraft hotkey patch
         run: python3 scripts/desktop_screens_patch.py upstream
       - name: Apply integrated host patches
