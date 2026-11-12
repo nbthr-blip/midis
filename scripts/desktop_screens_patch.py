@@ -168,7 +168,37 @@ edit_java("PictureRenderType.java", [
 # 1.21.11 GUI model accepts SimpleGuiElementRenderState via addSimpleElement.
 edit_java("GuiDraw.java", [(".addGuiElement(element)", ".addSimpleElement(element)")])
 
+
+# On 1.21.11 (Mojang mappings), GuiRenderState submits a GuiElementRenderState this way:
+edit_java("GuiDraw.java", [(".addSimpleElement(element)", ".submitGuiElement(element)")])
+
+# Some Stonecutter-generated 1.21.11 files still contain older code even when the source
+# was changed. Fix these exact expressions at compile time, after Stonecutter generates them.
+# Fail fast if the generated source directory is not found.
+(ROOT / "build.fabric.gradle.kts").open("a", encoding="utf-8").write("""
+tasks.named<JavaCompile>("compileJava") {
+    doFirst {
+        val javaDir = project.layout.buildDirectory.dir("generated/stonecutter/main/java").get().asFile
+        if (!javaDir.exists()) throw GradleException("Stonecutter's generated Java not found: $javaDir")
+        val changes = listOf(
+            Triple("com/desktopscreens/client/LiveCapture.java", "mc.getToasts()", "mc.getToastManager()"),
+            Triple("com/desktopscreens/client/ScreenBuilderClient.java", "mc.getTimer()", "mc.getDeltaTracker()"),
+            Triple("com/desktopscreens/client/SharedSounds.java", "mc.gameRenderer.getMainCamera().getPosition()", "mc.gameRenderer.getMainCamera().position()")
+        )
+        for ((path, old, replacement) in changes) {
+            val file = javaDir.resolve(path)
+            val before = file.readText()
+            if (before.contains(old)) {
+                file.writeText(before.replace(old, replacement))
+                println("1.21.11 generated code fixed: $path")
+            }
+        }
+    }
+}
+""")
+
 print("Compatibility patch applied for the Fabric 1.21.11 GUI, renderer, and Mojang API migrations.")
+
 
 
 
