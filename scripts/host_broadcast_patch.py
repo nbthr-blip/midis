@@ -46,7 +46,7 @@ public final class HostBroadcast {
     }
 
     public static void toggle(net.minecraft.server.level.ServerPlayer player, Toggle packet) {
-        MinecraftServer server = player.getServer();
+        MinecraftServer server = Players.server(player);
         if (server == null || !player.getUUID().equals(owner(server))) return;
         activeServer = server;
         enabled = packet.enabled();
@@ -64,7 +64,7 @@ public final class HostBroadcast {
 
     public static UUID owner(MinecraftServer server) {
         if (server == null || server.isDedicatedServer() || server.getSingleplayerProfile() == null) return null;
-        return server.getSingleplayerProfile().getId();
+        return Players.id(server.getSingleplayerProfile());
     }
 }
 """)
