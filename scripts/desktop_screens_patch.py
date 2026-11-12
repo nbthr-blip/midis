@@ -71,4 +71,14 @@ for name in ("screen", "tablet", "screen_builder"):
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_bytes(source.read_bytes())
 
-print("Bootstrap patch applied: 1.21.11 Fabric target, apostrophe settings key, original models.")
+# Minecraft 1.21.9 introduced the modern render-state APIs; upstream only switches
+# to those implementations at 26.1. Enable the 26.1 paths for 1.21.11 here.
+# This is an experimental API migration, not a guarantee of runtime compatibility.
+for source in (ROOT / "src/main/java").rglob("*.java"):
+    body = source.read_text(encoding="utf-8")
+    migrated = body.replace(">=26.1", ">=1.21.11").replace("<26.1", "<1.21.11")
+    if migrated != body:
+        source.write_text(migrated, encoding="utf-8")
+
+print("Bootstrap patch applied: 1.21.11 Fabric target, modern rendering API, apostrophe settings key.")
+
