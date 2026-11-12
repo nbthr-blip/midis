@@ -24,10 +24,14 @@ jobs:
         run: git clone --depth 1 https://github.com/MagiMigi/desktop-screens.git upstream
       - name: Apply Minecraft 1.21.11 + StreamCraft hotkey patch
         run: python3 scripts/desktop_screens_patch.py upstream
-      - name: Apply BOTHIER host broadcast patches
+      - name: Apply integrated host patches
         run: |
           python3 scripts/host_broadcast_patch.py upstream
           python3 scripts/host_broadcast_stage3.py upstream
+      - name: Apply V4 patches
+        run: |
+          python3 scripts/v4_patch.py upstream
+          python3 scripts/v4_tablet_ui_patch.py upstream
       - name: Compile Fabric mod
         working-directory: upstream
         run: |
@@ -37,7 +41,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: DesktopScreens_Fabric_1.21.11_BOTHIER_V2
+          name: DesktopScreens_Fabric_1.21.11_V4
           path: upstream/versions/1.21.11-fabric/build/libs/*.jar
           if-no-files-found: error
           retention-days: 14
