@@ -70,7 +70,7 @@ replace(menu, "        if (mode == Mode.SETTINGS) addSettingsWidgets();",
 # a clear "CHOOSE A WINDOW" navigation button. On screen mode it updates THAT screen.
 s = load(menu)
 start_key = "        // The monitors, and first the one window shown, if there is one. Windows are picked with Right Ctrl + W."
-end_key = "        y += 22;\n        //? if >=26.1 {"
+end_key = "        y += 22;"
 if start_key not in s or end_key not in s:
     raise SystemExit("V5 could not locate source-cycle block in DesktopScreen.java")
 start=s.index(start_key)
