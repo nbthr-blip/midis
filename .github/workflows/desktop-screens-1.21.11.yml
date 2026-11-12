@@ -35,6 +35,7 @@ jobs:
           python3 scripts/v4_patch.py upstream
           python3 scripts/v4_tablet_ui_patch.py upstream
           python3 scripts/v5_patch.py upstream
+          python3 scripts/v6_host_performance_patch.py upstream
       - name: Compile Fabric mod
         working-directory: upstream
         run: |
@@ -44,7 +45,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: DesktopScreens_Fabric_1.21.11_V5
+          name: DesktopScreens_Fabric_1.21.11_V6
           path: upstream/versions/1.21.11-fabric/build/libs/*.jar
           if-no-files-found: error
           retention-days: 14
