@@ -210,11 +210,11 @@ for name in ("ScreenMixin.java", "ChatComponentMixin.java"):
 # not alignWithEntity() (the 26.1 camera hook).
 cam = ROOT / "src/main/java/com/desktopscreens/mixin/CameraMixin.java"
 body = cam.read_text(encoding="utf-8")
-body = body.replace("import net.minecraft.client.Camera;", "import net.minecraft.client.Camera;\nimport net.minecraft.world.entity.Entity;\nimport net.minecraft.world.level.BlockGetter;")
+body = body.replace("import net.minecraft.client.Camera;", "import net.minecraft.client.Camera;\nimport net.minecraft.world.entity.Entity;\nimport net.minecraft.world.level.Level;")
 body = body.replace('@Inject(method = "alignWithEntity", at = @At("TAIL"))',
                     '@Inject(method = "setup", at = @At("TAIL"))')
 body = body.replace('private void desktopscreens$glide(float partialTicks, CallbackInfo ci) {',
-                    'private void desktopscreens$glide(BlockGetter level, Entity entity, boolean detached, boolean thirdPersonReverse, float partialTicks, CallbackInfo ci) {')
+                    'private void desktopscreens$glide(Level level, Entity entity, boolean detached, boolean thirdPersonReverse, float partialTicks, CallbackInfo ci) {')
 cam.write_text(body, encoding="utf-8")
 
 print("Applied runtime mixin target corrections: ScreenMixin, ChatComponentMixin, CameraMixin.")
